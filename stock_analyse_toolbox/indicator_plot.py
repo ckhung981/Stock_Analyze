@@ -1,12 +1,13 @@
-import os
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-import ta
-
-def plot_indicators(data, ticker=None, indicators_to_plot=['RSI','MACD','OBV']):
+def plot_indicators(data, ticker=None, indicators_to_plot=['RSI','MACD','OBV'], xaxis_freq='year'):
     """
     畫技術指標，並自動建立資料夾存圖
+    xaxis_freq: 'year', 'month', 'day'
     """
+    import matplotlib.dates as mdates
+    import os
+    import matplotlib.pyplot as plt
+    import ta
+
     if ticker is None:
         ticker = getattr(data,  'Ticker', 'UNKNOWN')
 
@@ -54,9 +55,16 @@ def plot_indicators(data, ticker=None, indicators_to_plot=['RSI','MACD','OBV']):
             ax.set_ylabel('OBV')
             ax.legend(loc='upper left')
 
-    # X 軸格式
-    axes[-1].xaxis.set_major_locator(mdates.YearLocator())
-    axes[-1].xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+    # X 軸格式：依照 user 設定
+    if xaxis_freq == 'year':
+        axes[-1].xaxis.set_major_locator(mdates.YearLocator())
+        axes[-1].xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+    elif xaxis_freq == 'month':
+        axes[-1].xaxis.set_major_locator(mdates.MonthLocator())
+        axes[-1].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+    elif xaxis_freq == 'day':
+        axes[-1].xaxis.set_major_locator(mdates.DayLocator())
+        axes[-1].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
 
     plt.tight_layout()
     save_path = os.path.join(folder, f'{ticker}_indicators.png')

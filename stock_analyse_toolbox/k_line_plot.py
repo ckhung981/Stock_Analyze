@@ -3,11 +3,10 @@ import mplfinance as mpf
 import pandas as pd
 import ta
 
-def plot_ohlc(data, ticker=None):
+def plot_ohlc(data, ticker=None, xaxis_freq='auto'):
     """
     畫蠟燭圖並自動建立資料夾存圖
-    data: yf.download 回傳的 DataFrame
-    ticker: 股票代號，若為 None，從 data.columns 或其他方式自動判斷
+    xaxis_freq: 'auto', 'year', 'month', 'day'
     """
     # 自動判斷 ticker
     if ticker is None:
@@ -44,6 +43,16 @@ def plot_ohlc(data, ticker=None):
 
     save_path = os.path.join(folder, f'{ticker}_ohlc.png')
 
+    # 根據 xaxis_freq 決定日期格式
+    if xaxis_freq == 'year':
+        dt_format = '%Y'
+    elif xaxis_freq == 'month':
+        dt_format = '%Y-%m'
+    elif xaxis_freq == 'day':
+        dt_format = '%Y-%m-%d'
+    else:
+        dt_format = None  # 讓 mplfinance 自動決定
+
     # 畫圖並存檔
     mpf.plot(
         data,
@@ -57,6 +66,8 @@ def plot_ohlc(data, ticker=None):
         tight_layout=True,
         warn_too_much_data=10000,
         show_nontrading=False,
+        datetime_format=dt_format,   # <── 日期格式控制
+        xrotation=15,                # 避免日期重疊
         savefig=save_path
     )
 

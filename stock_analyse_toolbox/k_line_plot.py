@@ -2,6 +2,7 @@ import os
 import mplfinance as mpf
 import pandas as pd
 import ta
+import numpy as np
 
 def plot_ohlc(data, ticker=None, xaxis_freq='auto'):
     """
@@ -25,6 +26,10 @@ def plot_ohlc(data, ticker=None, xaxis_freq='auto'):
     data[ohlc_cols] = data[ohlc_cols].astype(float)
     data = data.dropna(subset=ohlc_cols)
 
+    if data.empty:
+        print("資料不足，無法繪製 OHLC")
+        return
+
     # 計算 SMA/EMA/布林通道
     close = data['Close']
     data['SMA20'] = ta.trend.SMAIndicator(close=close, window=20).sma_indicator()
@@ -33,13 +38,16 @@ def plot_ohlc(data, ticker=None, xaxis_freq='auto'):
     data['BB_high'] = bb.bollinger_hband()
     data['BB_low'] = bb.bollinger_lband()
 
-    # addplot
-    add_plots = [
-        mpf.make_addplot(data['SMA20'], color='blue', width=1, label='SMA20'),
-        mpf.make_addplot(data['EMA50'], color='red', width=1, label='EMA50'),
-        mpf.make_addplot(data['BB_high'], color='orange', linestyle='--', alpha=0.7, label='BB High'),
-        mpf.make_addplot(data['BB_low'], color='orange', linestyle='--', alpha=0.7, label='BB Low')
-    ]
+    # addplot 前先檢查資料是否有效
+    add_plots = []
+    if data['SMA20'].notna().any():
+        add_plots.append(mpf.make_addplot(data['SMA20'], color='blue', width=1, label='SMA20'))
+    if data['EMA50'].notna().any():
+        add_plots.append(mpf.make_addplot(data['EMA50'], color='red', width=1, label='EMA50'))
+    if data['BB_high'].notna().any():
+        add_plots.append(mpf.make_addplot(data['BB_high'], color='orange', linestyle='--', alpha=0.7, label='BB High'))
+    if data['BB_low'].notna().any():
+        add_plots.append(mpf.make_addplot(data['BB_low'], color='orange', linestyle='--', alpha=0.7, label='BB Low'))
 
     save_path = os.path.join(folder, f'{ticker}_ohlc.png')
 
@@ -66,8 +74,8 @@ def plot_ohlc(data, ticker=None, xaxis_freq='auto'):
         tight_layout=True,
         warn_too_much_data=10000,
         show_nontrading=False,
-        datetime_format=dt_format,   # <── 日期格式控制
-        xrotation=15,                # 避免日期重疊
+        datetime_format=dt_format,
+        xrotation=15,
         savefig=save_path
     )
 

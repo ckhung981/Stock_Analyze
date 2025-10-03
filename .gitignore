@@ -1,4 +1,5 @@
 output
 *.ipynb
 *.csv
-*_pycache_/*
+
+stock_analyse_toolbox/__pycache__

@@ -1,6 +1,5 @@
-# (在 strategies.py 中)
 import pandas as pd
-import numpy as np # 需要 numpy
+import numpy as np 
 
 def moving_average_strategy(data, short=10, long=30):
     if not isinstance(data.index, pd.DatetimeIndex):

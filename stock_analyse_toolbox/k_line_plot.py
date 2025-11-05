@@ -1,13 +1,17 @@
+# (位於 stock_analyse_toolbox/k_line_plot.py)
+
 import os
 import mplfinance as mpf
 import pandas as pd
 import ta
 import numpy as np
 
-def plot_ohlc(data, ticker=None, xaxis_freq='auto'):
+def plot_ohlc(data, ticker=None, xaxis_freq='auto', save_suffix='_ohlc'): # *** 修改 1: 增加 save_suffix ***
     """
     畫蠟燭圖並自動建立資料夾存圖
     xaxis_freq: 'auto', 'year', 'month', 'day'
+    save_suffix: 儲存的檔案名稱後綴
+    *** 新功能: 如果 data 中包含 'Signal' 欄位, 將自動繪製買賣點 ***
     """
     # 自動判斷 ticker
     if ticker is None:
@@ -21,10 +25,12 @@ def plot_ohlc(data, ticker=None, xaxis_freq='auto'):
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = data.columns.get_level_values(0)
 
-    # OHLC + Volume
+    # 確保資料型態正確
     ohlc_cols = ['Open','High','Low','Close','Volume']
-    data[ohlc_cols] = data[ohlc_cols].astype(float)
-    data = data.dropna(subset=ohlc_cols)
+    for col in ohlc_cols:
+        if col in data.columns:
+            data[col] = data[col].astype(float)
+    data = data.dropna(subset=[col for col in ohlc_cols if col in data.columns])
 
     if data.empty:
         print("資料不足，無法繪製 OHLC")
@@ -49,7 +55,34 @@ def plot_ohlc(data, ticker=None, xaxis_freq='auto'):
     if data['BB_low'].notna().any():
         add_plots.append(mpf.make_addplot(data['BB_low'], color='orange', linestyle='--', alpha=0.7, label='BB Low'))
 
-    save_path = os.path.join(folder, f'{ticker}_ohlc.png')
+    # ------------------------------------------------------------------
+    # ***繪製買賣訊號 ***
+    if 'Signal' in data.columns:
+        # 找出訊號 "改變" 的那一天 (即交易發生的那天)
+        
+        # 買入: 訊號從 -1 或 0 變為 1
+        buy_cond = (data['Signal'] == 1) & (data['Signal'].shift(1) != 1)
+        # 賣出: 訊號從 1 變為 -1
+        sell_cond = (data['Signal'] == -1) & (data['Signal'].shift(1) == 1)
+
+        # 建立兩個新的 Series, 只在買賣點有值, 其他地方都是 NaN
+        buy_markers = pd.Series(np.nan, index=data.index)
+        sell_markers = pd.Series(np.nan, index=data.index)
+
+        # 在 K 線的 "下方" 標記買入點
+        buy_markers[buy_cond] = data['Low'][buy_cond] * 0.98 
+        # 在 K 線的 "上方" 標記賣出點
+        sell_markers[sell_cond] = data['High'][sell_cond] * 1.02
+
+        # 加入 add_plots 列表
+        if buy_markers.notna().any():
+             add_plots.append(mpf.make_addplot(buy_markers, type='scatter', marker='^', color='g', markersize=150, label='Buy'))
+        if sell_markers.notna().any():
+            add_plots.append(mpf.make_addplot(sell_markers, type='scatter', marker='v', color='r', markersize=150, label='Sell'))
+    # ------------------------------------------------------------------
+
+    # *** 使用 save_suffix 來命名檔案 ***
+    save_path = os.path.join(folder, f'{ticker}{save_suffix}.png')
 
     # 根據 xaxis_freq 決定日期格式
     if xaxis_freq == 'year':
@@ -59,14 +92,14 @@ def plot_ohlc(data, ticker=None, xaxis_freq='auto'):
     elif xaxis_freq == 'day':
         dt_format = '%Y-%m-%d'
     else:
-        dt_format = None  # 讓 mplfinance 自動決定
+        dt_format = None # 讓 mplfinance 自動決定
 
     # 畫圖並存檔
     mpf.plot(
         data,
         type='candle',
         style='charles',
-        title=f'{ticker} OHLC Candlestick Chart',
+        title=f'{ticker} OHLC Chart ({save_suffix.strip("_")})', 
         ylabel='Price',
         volume=True,
         addplot=add_plots,
@@ -79,4 +112,4 @@ def plot_ohlc(data, ticker=None, xaxis_freq='auto'):
         savefig=save_path
     )
 
-    print(f"Saved OHLC chart to {save_path}")
+    print(f"Saved OHLC chart with signals to {save_path}")

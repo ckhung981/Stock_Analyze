@@ -3,3 +3,4 @@ output
 *.csv
 
 stock_analyse_toolbox/__pycache__
+backtest.py

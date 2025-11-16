@@ -5,7 +5,7 @@ import ta
 import numpy as np
 
 def plot_ohlc(data, ticker=None, xaxis_freq='auto', save_suffix='_ohlc', 
-              strategy_indicators=[]): # *** 修改 1: 增加 new_argument ***
+              strategy_indicators=[], **kwargs): # *** 修改 1: 增加 new_argument ***
     """
     畫蠟燭圖、買賣點、並在下方加入指定的技術指標子圖 (Panel)
     
@@ -92,16 +92,48 @@ def plot_ohlc(data, ticker=None, xaxis_freq='auto', save_suffix='_ohlc',
 
     for ind in strategy_indicators:
         if ind == 'RSI':
+            # --- 從 kwargs 獲取參數，如果沒有就用預設值 ---
+            period = kwargs.get('period', 14)
+            overbought = kwargs.get('overbought', 70)
+            oversold = kwargs.get('oversold', 30)
+            # ----------------------------------------
+            
             # ** 關鍵 **: 優先使用 data 中已有的 'RSI' (來自 strategy)
             if 'RSI' not in data.columns:
-                print("Warning: Calculating RSI using 'ta' (SMA-based). May differ from strategy.")
-                data['RSI'] = ta.momentum.RSIIndicator(close=close, window=14).rsi()
+                print(f"Warning: Calculating RSI using 'ta' (SMA-based) with period={period}.")
+                # 修正: 確保使用 data['Close']
+                data['RSI'] = ta.momentum.RSIIndicator(close=data['Close'], window=period).rsi() 
+
+            rsi_ylabel = f"RSI({period})\n{overbought} (OB)\n{oversold} (OS)"
+           # --- 3. (新功能) 繪製 RSI 主線條 + 強制 Y 軸 ---
+            # 1. 加上 ylim 來強制 Y 軸範圍 0-100
+            # 2. 替換 ylabel 
+            add_plots.append(mpf.make_addplot(
+                data['RSI'], 
+                panel=current_panel, 
+                ylabel=rsi_ylabel,  # <-- 使用新的動態標籤
+                color='purple',
+                ylim=(0, 100)      # <-- 新增: 強制 Y 軸範圍
+            ))
             
-            # 將 RSI 畫在新的 panel 上
-            add_plots.append(mpf.make_addplot(data['RSI'], panel=current_panel, ylabel='RSI', color='purple'))
-            # 加上 70 / 30 水平線
-            add_plots.append(mpf.make_addplot(pd.Series(70, index=data.index), panel=current_panel, color='red', linestyle='--', alpha=0.7))
-            add_plots.append(mpf.make_addplot(pd.Series(30, index=data.index), panel=current_panel, color='green', linestyle='--', alpha=0.7))
+            # --- 4. (新功能) 繪製動態的水平線 + 強制 Y 軸 ---
+            # 這裡也加上 ylim=(0, 100) 是為了確保 Y 軸在所有 plot 之間保持一致
+            add_plots.append(mpf.make_addplot(
+                pd.Series(overbought, index=data.index), 
+                panel=current_panel, 
+                color='red', 
+                linestyle='--', 
+                alpha=0.7,
+                ylim=(0, 100)      # <-- 新增: 保持 Y 軸一致
+            ))
+            add_plots.append(mpf.make_addplot(
+                pd.Series(oversold, index=data.index), 
+                panel=current_panel, 
+                color='green', 
+                linestyle='--', 
+                alpha=0.7,
+                ylim=(0, 100)      # <-- 新增: 保持 Y 軸一致
+            ))
             
             panel_ratios.append(1) # RSI 佔 1 份高度
             current_panel += 1
